@@ -12,14 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-type LocalFile = {
-  id: string;
-  name: string;
-  type: string;
-  sizeBytes: number;
-  addedAt: number;
-};
+import { useAppStore } from "@/lib/store";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -30,18 +23,16 @@ function formatBytes(bytes: number): string {
 }
 
 function acceptSupportedFiles(file: File): boolean {
-  const allowed = new Set([
-    "application/pdf",
-    "text/plain",
-    "text/markdown",
-  ]);
-  
+  const allowed = new Set(["application/pdf", "text/plain", "text/markdown"]);
   const nameOk = file.name.toLowerCase().endsWith(".md");
   return allowed.has(file.type) || nameOk;
 }
 
 export function FilesPanel() {
-  const [files, setFiles] = useState<LocalFile[]>([]);
+  const files = useAppStore((s) => s.files);
+  const addFiles = useAppStore((s) => s.addFiles);
+  const removeFile = useAppStore((s) => s.removeFile);
+
   const [filter, setFilter] = useState("");
   const [pending, setPending] = useState<File[]>([]);
 
@@ -60,20 +51,17 @@ export function FilesPanel() {
   function addPending() {
     if (pending.length === 0) return;
 
-    const next: LocalFile[] = pending.map((f) => ({
-      id: crypto.randomUUID(),
-      name: f.name,
-      type: f.type || (f.name.toLowerCase().endsWith(".md") ? "text/markdown" : "unknown"),
-      sizeBytes: f.size,
-      addedAt: Date.now(),
-    }));
+    addFiles(
+      pending.map((f) => ({
+        name: f.name,
+        type:
+          f.type ||
+          (f.name.toLowerCase().endsWith(".md") ? "text/markdown" : "unknown"),
+        sizeBytes: f.size,
+      }))
+    );
 
-    setFiles((prev) => [...next, ...prev]);
     setPending([]);
-  }
-
-  function removeFile(id: string) {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
   return (
@@ -95,9 +83,7 @@ export function FilesPanel() {
             </DialogHeader>
 
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Supported: PDF, TXT, MD.
-              </p>
+              <p className="text-sm text-muted-foreground">Supported: PDF, TXT, MD.</p>
 
               <Input
                 type="file"
@@ -156,11 +142,7 @@ export function FilesPanel() {
                     {f.type} • {formatBytes(f.sizeBytes)}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeFile(f.id)}
-                >
+                <Button size="sm" variant="ghost" onClick={() => removeFile(f.id)}>
                   Remove
                 </Button>
               </div>
